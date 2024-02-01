@@ -1,6 +1,7 @@
 const pcap = require('pcap');
-// const RedisProtocol = require('redis-protocol');
-const { encode, decode, decodeGen } = require('redis-proto');
+const redisProto = require('redis-proto');
+const metricEmitter = require('./metrics');
+
 // Replace these values with your Redis server configuration
 const redisConfig = {
     host: 'localhost',
@@ -11,8 +12,7 @@ const queries = {};
 // Create a session to capture network traffic
 const pcapSession = pcap.createSession('lo0', { buffer_size: 65536 }); // Use the appropriate network interface
 
-// Set up a Redis protocol parser
-// const redisParser = new RedisProtocol();
+console.log('created the pcap session, started listening for packets');
 
 // Listen for network packets
 pcapSession.on('packet', (rawPacket) => {
@@ -29,27 +29,27 @@ pcapSession.on('packet', (rawPacket) => {
             if (
                 tcpPacket.data
             ) {
-                // console.log(tcpPacket);
                 if (tcpPacket.dport === redisConfig.port) {
-                    const command = decode(tcpPacket.data);
+                    // console.log(ipv4Packet);
+                    const request = redisProto.decode(tcpPacket.data);
                     queries[tcpPacket.ackno] = {
-                        'command': command,
-                        'startTime': process.hrtime(),
+                        'request': request[0].join(' '),
+                        'command': request[0][0],
+                        'startTime': process.hrtime.bigint(),
                         'duration_in_ns': 0,
-                        'size_in_bytes': 0
+                        'size_in_bytes': 0,
+                        'sender': ipv4Packet.saddr.toString()
                     };
-                    console.log('Redis Request:', command);
                 } else if (tcpPacket.sport === redisConfig.port) {
                     const query = queries[tcpPacket.seqno];
                     if (query) {
-                        const response = decode(tcpPacket.data);
-                        const duration = process.hrtime(query['startTime']);
-                        const duration_in_ns = duration[0] * 1000 * 1000 * 1000 + duration[1];
+                        const duration_in_ns = process.hrtime.bigint() - query['startTime'];
                         query['duration_in_ns'] = duration_in_ns;
                         query['size_in_bytes'] = Buffer.byteLength(tcpPacket.data);
-                        console.log('Redis Response:', query);
+                        metricEmitter.emit('query', query);
+                        delete queries[tcpPacket.seqno];
                     } else {
-                        console.log('Request not found for Response:', decode(tcpPacket.data));
+                        console.log('Request not found for Response:', redisProto.decode(tcpPacket.data));
                     }
                 }
             }
