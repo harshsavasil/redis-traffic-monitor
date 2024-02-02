@@ -4,13 +4,12 @@ const metricEmitter = require('./metrics');
 
 // Replace these values with your Redis server configuration
 const redisConfig = {
-    host: 'localhost',
     port: 6379,
 };
 
 const queries = {};
 // Create a session to capture network traffic
-const pcapSession = pcap.createSession('lo0', { buffer_size: 65536 }); // Use the appropriate network interface
+const pcapSession = pcap.createSession('eth0'); // Use the appropriate network interface
 
 console.log('created the pcap session, started listening for packets');
 
