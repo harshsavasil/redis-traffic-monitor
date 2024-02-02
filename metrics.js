@@ -2,6 +2,7 @@ const EventEmitter = require('node:events');
 const metricEmitter = new EventEmitter();
 const { InfluxDB, Point } = require('@influxdata/influxdb-client');
 const { hostname } = require('node:os');
+const logger = require('./logger');
 
 const url = 'http://localhost:8086';
 const token = 'YpUl8QwkrtPSttB9Eu26j9d2xXhZ1JifZmrcu3okWuwyR0XRN7NCBMDeK9uKMNylqrZW11myxbUK9gO_ERF2eg==';
@@ -51,10 +52,10 @@ const publishMetrics = () => {
 
     return writeApi.close()
         .then(() => {
-            console.log({ dataPoints: JSON.stringify(dataPoints) }, 'Data points metrics published');
+            logger.info({ dataPoints }, 'Data points metrics published');
         })
         .catch((err) => {
-            console.error(err, 'Error in influx db write api write points')
+            logger.error(err, 'Error in influx db write api write points')
         })
 };
 
