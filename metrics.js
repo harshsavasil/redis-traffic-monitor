@@ -7,6 +7,12 @@ const url = 'http://localhost:8086';
 const token = 'YpUl8QwkrtPSttB9Eu26j9d2xXhZ1JifZmrcu3okWuwyR0XRN7NCBMDeK9uKMNylqrZW11myxbUK9gO_ERF2eg==';
 const org = 'localorg';
 const bucket = 'localbucket';
+
+// const url = 'https://influxdb-jkt.pluang.org';
+// const token = 'W9NByzMcI17agSTVbpEd';
+// const org = 'primary';
+// const bucket = 'redis-metrics';
+
 const influxDB = new InfluxDB({ url, token })
 let metrics = [];
 
