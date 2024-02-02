@@ -1,6 +1,7 @@
 const pcap = require('pcap');
 const redisProto = require('redis-proto');
 const metricEmitter = require('./metrics');
+const logger = require('./logger');
 
 // Replace these values with your Redis server configuration
 const redisConfig = {
@@ -9,9 +10,9 @@ const redisConfig = {
 
 const queries = {};
 // Create a session to capture network traffic
-const pcapSession = pcap.createSession('eth0'); // Use the appropriate network interface
+const pcapSession = pcap.createSession('lo0'); // Use the appropriate network interface
 
-console.log('created the pcap session, started listening for packets');
+logger.info('created the pcap session, started listening for packets');
 
 // Listen for network packets
 pcapSession.on('packet', (rawPacket) => {
@@ -48,17 +49,17 @@ pcapSession.on('packet', (rawPacket) => {
                         metricEmitter.emit('query', query);
                         delete queries[tcpPacket.seqno];
                     } else {
-                        console.log('Request not found for Response:', redisProto.decode(tcpPacket.data));
+                        logger.error({ tcpPacketData: redisProto.decode(tcpPacket.data), tcpPacketSeqNo: tcpPacket.seqno }, 'Corresponding request not found for response');
                     }
                 }
             }
         }
-    } catch (error) {
-        console.error('Error processing network packet:', error);
+    } catch (err) {
+        logger.error(err, 'Error processing network packet');
     }
 });
 
 // Handle errors
-pcapSession.on('error', (error) => {
-    console.error('Error in pcap session:', error);
+pcapSession.on('error', (err) => {
+    logger.error(err, 'Error in pcap session');
 });
