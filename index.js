@@ -1,7 +1,7 @@
 const pcap = require('pcap');
-const redisProto = require('redis-proto');
 const metricEmitter = require('./metrics');
 const logger = require('./logger');
+const respParser = require('./resp-parser');
 
 // Replace these values with your Redis server configuration
 const redisConfig = {
@@ -31,25 +31,31 @@ pcapSession.on('packet', (rawPacket) => {
             ) {
                 if (tcpPacket.dport === redisConfig.port) {
                     // console.log(ipv4Packet);
-                    const request = redisProto.decode(tcpPacket.data);
-                    queries[tcpPacket.ackno] = {
-                        'request': request[0].join(' '),
-                        'command': request[0][0],
-                        'startTime': process.hrtime.bigint(),
-                        'duration_in_ns': 0,
-                        'size_in_bytes': 0,
-                        'sender': ipv4Packet.saddr.toString()
-                    };
+                    const request = respParser.decodePacketData(tcpPacket);
+                    if (!request) {
+                        queries[tcpPacket.ackno] = null;
+                    } else {
+                        queries[tcpPacket.ackno] = {
+                            'request': request[0].join(' '),
+                            'command': request[0][0],
+                            'startTime': process.hrtime.bigint(),
+                            'duration_in_ns': 0,
+                            'size_in_bytes': 0,
+                            'sender': ipv4Packet.saddr.toString()
+                        };
+                    }
                 } else if (tcpPacket.sport === redisConfig.port) {
                     const query = queries[tcpPacket.seqno];
-                    if (query) {
+                    if (query === null) {
+                        logger.info({ tcpPacketData: respParser.decodePacketData(tcpPacket), tcpPacketSeqNo: tcpPacket.seqno }, 'Corresponding request not able to get parsed');
+                    } else if (query) {
                         const duration_in_ns = process.hrtime.bigint() - query['startTime'];
                         query['duration_in_ns'] = duration_in_ns;
                         query['size_in_bytes'] = Buffer.byteLength(tcpPacket.data);
                         metricEmitter.emit('query', query);
                         delete queries[tcpPacket.seqno];
                     } else {
-                        logger.error({ tcpPacketData: redisProto.decode(tcpPacket.data), tcpPacketSeqNo: tcpPacket.seqno }, 'Corresponding request not found for response');
+                        logger.error({ tcpPacketData: respParser.decodePacketData(tcpPacket), tcpPacketSeqNo: tcpPacket.seqno }, 'Corresponding request not found for response');
                     }
                 }
             }
