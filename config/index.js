@@ -1,6 +1,6 @@
 module.exports = {
     redisConfig: {
-        port: process.env.REDIS_PORT || '6379',
+        port: Number(process.env.REDIS_PORT) || 6379,
     },
     influxDBConfig: {
         url: process.env.INFLUX_DB_URL || 'http://localhost:8086',
