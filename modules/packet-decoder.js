@@ -32,7 +32,7 @@ class PacketDecoder {
                 if (
                     tcpPacket.data
                 ) {
-                    if (tcpPacket.dport === config.redisConfig.port) {
+                    if (tcpPacket.dport == config.redisConfig.port) {
                         const request = this.respParser.decodePacketData(tcpPacket);
                         if (!request) {
                             this.queries[tcpPacket.ackno] = null;
@@ -46,7 +46,7 @@ class PacketDecoder {
                                 'sender': ipv4Packet.saddr.toString()
                             };
                         }
-                    } else if (tcpPacket.sport === config.redisConfig.port) {
+                    } else if (tcpPacket.sport == config.redisConfig.port) {
                         const query = this.queries[tcpPacket.seqno];
                         if (query === null) {
                             this.logger.info({ tcpPacketData: this.respParser.decodePacketData(tcpPacket), tcpPacketSeqNo: tcpPacket.seqno }, 'Corresponding request not able to get parsed');

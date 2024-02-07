@@ -25,6 +25,6 @@ ENV INFLUX_DB_URL=https://influxdb-jkt.pluang.org
 ENV INFLUX_DB_TOKEN=W9NByzMcI17agSTVbpEd
 ENV INFLUX_DB_ORG=primary
 ENV INFLUX_DB_BUCKET=redis-metrics
-ENV NETWORK_INTERFACE=lo
+ENV NETWORK_INTERFACE=eth0
 
 CMD ["node", "index.js"]
