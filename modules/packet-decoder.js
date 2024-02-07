@@ -32,10 +32,10 @@ class PacketDecoder {
                 if (
                     tcpPacket.data
                 ) {
-                    tcpPacket.dport = String(tcpPacket.dport)
-                    tcpPacket.sport = String(tcpPacket.sport)
-                    tcpPacket.ackno = String(tcpPacket.ackno)
-                    tcpPacket.seqno = String(tcpPacket.seqno)
+                    tcpPacket.dport = Number(tcpPacket.dport)
+                    tcpPacket.sport = Number(tcpPacket.sport)
+                    tcpPacket.ackno = Number(tcpPacket.ackno)
+                    tcpPacket.seqno = Number(tcpPacket.seqno)
                     if (tcpPacket.dport === config.redisConfig.port) {
                         const request = this.respParser.decodePacketData(tcpPacket);
                         if (!request) {
