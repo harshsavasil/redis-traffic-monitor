@@ -31,12 +31,13 @@ class PacketDecoder {
                 // Check if it's a packet sent to or received from the Redis server
                 if (
                     tcpPacket.data
-                ) {
+                    ) {
                     tcpPacket.dport = Number(tcpPacket.dport)
                     tcpPacket.sport = Number(tcpPacket.sport)
                     tcpPacket.ackno = Number(tcpPacket.ackno)
                     tcpPacket.seqno = Number(tcpPacket.seqno)
                     if (tcpPacket.dport === config.redisConfig.port) {
+                        // request
                         const request = this.respParser.decodePacketData(tcpPacket);
                         if (!request) {
                             this.queries[tcpPacket.ackno] = null;
@@ -51,9 +52,13 @@ class PacketDecoder {
                             };
                         }
                     } else if (tcpPacket.sport === config.redisConfig.port) {
+                        // response
                         const query = this.queries[tcpPacket.seqno];
                         if (query === null) {
-                            this.logger.info({ tcpPacketData: this.respParser.decodePacketData(tcpPacket), tcpPacketSeqNo: tcpPacket.seqno }, 'Corresponding request not able to get parsed');
+                            this.logger.info({
+                                tcpPacketData: this.respParser.decodePacketData(tcpPacket),
+                                tcpPacketSeqNo: tcpPacket.seqno,
+                            }, 'Corresponding request not able to get parsed');
                         } else if (query) {
                             const duration_in_ns = process.hrtime.bigint() - query['startTime'];
                             query['duration_in_ns'] = duration_in_ns;
@@ -61,7 +66,10 @@ class PacketDecoder {
                             this.metricsEmitter.emit('query', query);
                             delete this.queries[tcpPacket.seqno];
                         } else {
-                            this.logger.error({ tcpPacketData: this.respParser.decodePacketData(tcpPacket), tcpPacketSeqNo: tcpPacket.seqno }, 'Corresponding request not found for response');
+                            this.logger.error({
+                                tcpPacketData: this.respParser.decodePacketData(tcpPacket),
+                                tcpPacketSeqNo: tcpPacket.seqno
+                            }, 'Corresponding request not found for response');
                         }
                     }
                 }

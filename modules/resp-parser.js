@@ -12,7 +12,7 @@ class RespParser {
         } catch (err) {
             this.logger.error({
                 err,
-                tcpPacketData: tcpPacket.data,
+                tcpPacketData: tcpPacket.data && tcpPacket.data.toString(),
                 tcpPacketAckNo: tcpPacket.ackno,
                 tcpPacketSeqNo: tcpPacket.seqno
             }, '[respParser] [decodePacketData] Error in decoding the packet');
