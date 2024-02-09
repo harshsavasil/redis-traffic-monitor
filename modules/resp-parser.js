@@ -5,17 +5,15 @@ class RespParser {
         this.logger = logger;
     }
 
-    decodePacketData(tcpPacket) {
+    parseData(data) {
         try {
-            const decodedData = redisProto.decode(tcpPacket.data);
+            const decodedData = redisProto.decode(data);
             return decodedData;
         } catch (err) {
             this.logger.error({
                 err,
-                tcpPacketData: tcpPacket.data && tcpPacket.data.toString(),
-                tcpPacketAckNo: tcpPacket.ackno,
-                tcpPacketSeqNo: tcpPacket.seqno
-            }, '[respParser] [decodePacketData] Error in decoding the packet');
+                data: data && data.toString(),
+            }, '[respParser] [parseData] Error in decoding the data');
             return null;
         }
     }
