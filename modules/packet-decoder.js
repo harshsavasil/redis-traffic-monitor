@@ -1,21 +1,31 @@
 const pcap = require('pcap');
-const RespParser = require('./resp-parser');
-const MetricsEmitter = require('./metrics-emitter');
 const config = require('../config');
+const QueryProcessor = require('./query-processor');
 
 class PacketDecoder {
     constructor({ logger }) {
         this.queries = {};
         this.logger = logger;
-        this.respParser = new RespParser({ logger: this.logger });
-        this.metricsEmitter = new MetricsEmitter({ logger: this.logger });
+        this.queryProcessor = new QueryProcessor({ logger: this.logger });
         this.pcapSession = pcap.createSession(config.networkInterface);
+        this.requestBuffer = {
+            seqno: 0,
+            ackno: 0,
+            dataLength: 0,
+            data: Buffer.from([]),
+        };
+        this.responseBuffer = {
+            seqno: 0,
+            ackno: 0,
+            dataLength: 0,
+            data: Buffer.from([]),
+        };
     }
 
     start() {
         this.pcapSession.on('packet', this.processPacket.bind(this));
         this.pcapSession.on('error', this.handleError.bind(this));
-        setInterval(this.metricsEmitter.publishMetrics.bind(this.metricsEmitter), 10 * 1000);
+        this.queryProcessor.start();
         this.logger.info('Started packet decoder');
     }
 
@@ -29,47 +39,67 @@ class PacketDecoder {
             if (ipv4Packet.protocol === 6) {
                 const tcpPacket = ipv4Packet.payload;
                 // Check if it's a packet sent to or received from the Redis server
-                if (
-                    tcpPacket.data
-                    ) {
-                    tcpPacket.dport = Number(tcpPacket.dport)
-                    tcpPacket.sport = Number(tcpPacket.sport)
-                    tcpPacket.ackno = Number(tcpPacket.ackno)
-                    tcpPacket.seqno = Number(tcpPacket.seqno)
-                    if (tcpPacket.dport === config.redisConfig.port) {
+                const { ackno, seqno, dport, sport, data, dataLength } = tcpPacket;
+                if (data) {
+                    if (dport === config.redisConfig.port) {
                         // request
-                        const request = this.respParser.decodePacketData(tcpPacket);
-                        if (!request) {
-                            this.queries[tcpPacket.ackno] = null;
+                        if (seqno === this.requestBuffer.seqno) {
+                            // request is part of existing buffer
+                            // update seqno, dataLength, and append data
+                            // do not update ackno as its linked with initial packet
+                            this.requestBuffer = {
+                                seqno,
+                                ackno: this.requestBuffer.ackno,
+                                data: Buffer.concat(this.requestBuffer.data, data),
+                                dataLength,
+                            };
                         } else {
-                            this.queries[tcpPacket.ackno] = {
-                                'request': request[0].join(' '),
-                                'command': request[0][0],
-                                'startTime': process.hrtime.bigint(),
-                                'duration_in_ns': 0,
-                                'size_in_bytes': 0,
-                                'sender': ipv4Packet.saddr.toString()
+                            // this is new request
+                            if (this.requestBuffer.dataLength) {
+                                // emit existing request if valid
+                                this.queryProcessor.emit('request', {
+                                    // request ackno is mapped with response seqno
+                                    key: this.requestBuffer.ackno,
+                                    value: this.requestBuffer.data,
+                                });    
+                            }
+                            // update seqno, ackno, dataLength and data
+                            this.requestBuffer = {
+                                seqno,
+                                ackno,
+                                data,
+                                dataLength,
                             };
                         }
-                    } else if (tcpPacket.sport === config.redisConfig.port) {
+                    } else if (sport === config.redisConfig.port) {
                         // response
-                        const query = this.queries[tcpPacket.seqno];
-                        if (query === null) {
-                            this.logger.info({
-                                tcpPacketData: this.respParser.decodePacketData(tcpPacket),
-                                tcpPacketSeqNo: tcpPacket.seqno,
-                            }, 'Corresponding request not able to get parsed');
-                        } else if (query) {
-                            const duration_in_ns = process.hrtime.bigint() - query['startTime'];
-                            query['duration_in_ns'] = duration_in_ns;
-                            query['size_in_bytes'] = Buffer.byteLength(tcpPacket.data);
-                            this.metricsEmitter.emit('query', query);
-                            delete this.queries[tcpPacket.seqno];
+                        if (ackno === this.responseBuffer.ackno) {
+                            // response is part of existing buffer
+                            // update ackno, dataLength and append data
+                            // do not update seqno as its linked with initial packet
+                            this.responseBuffer = {
+                                seqno: this.responseBuffer.seqno,
+                                ackno,
+                                data: Buffer.concat(this.responseBuffer.data, data),
+                                dataLength,
+                            }
                         } else {
-                            this.logger.error({
-                                tcpPacketData: this.respParser.decodePacketData(tcpPacket),
-                                tcpPacketSeqNo: tcpPacket.seqno
-                            }, 'Corresponding request not found for response');
+                            // this is new response
+                            if (this.responseBuffer.dataLength) {
+                                // emit existing response if valid
+                                this.queryProcessor.emit('response', {
+                                    // response seqno is mapped with request ackno
+                                    key: this.requestBuffer.seqno,
+                                    value: this.requestBuffer.data,
+                                });
+                            }
+                            // update seqno, ackno, dataLength and data
+                            this.requestBuffer = {
+                                seqno,
+                                ackno,
+                                data,
+                                dataLength,
+                            };                            
                         }
                     }
                 }
