@@ -30,10 +30,10 @@ class PacketDecoder {
             const isRedisResponse = sport === config.redisConfig.port;
             if (data && (isRedisRequest || isRedisResponse)) {
                 let isDatagramFragmented = moreFragments || fragmentOffset > 0;
-                if (doNotFragment) {
-                    this.logger.error({ headerLength, length, flags, identification, fragmentOffset }, 'Packet has doNotFragment set - it can\'t be fragmented');
-                    return;
-                }
+                // if (doNotFragment) {
+                //     this.logger.error({ headerLength, length, flags, identification, fragmentOffset }, 'Packet has doNotFragment set - it can\'t be fragmented');
+                //     return;
+                // }
                 if (!isDatagramFragmented) {
                     this.emitPacket(isRedisRequest, isRedisResponse, ackno, seqno, data);
                     return;
