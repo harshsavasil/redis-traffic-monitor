@@ -56,6 +56,7 @@ class PacketDecoder {
                     fragmentOffsets.forEach((fragmentOffset) => {
                         if (fragmentOffset === expectedNextFragmentOffset) {
                             const fragment = fragments[fragmentOffset];
+                            expectedNextFragmentOffset = fragment.nextFragmentOffset;
                             mergedData = Buffer.concat(mergedData, fragment.value);
                         } else {
                             this.logger.error({ fragmentOffsets, fragmentOffset, expectedNextFragmentOffset }, 'Not able to find expected fragment offset');
