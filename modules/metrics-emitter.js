@@ -42,7 +42,6 @@ class MetricsEmitter extends EventEmitter {
             
             dataPoints.push(point);
         });
-
         writeApi.writePoints(dataPoints);
         this.metrics = [];
 
