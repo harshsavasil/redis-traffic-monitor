@@ -13,13 +13,13 @@ class PacketDecoder {
     }
 
     start() {
-        this.pcapSession.on('packet', this.processPacket.bind(this));
+        this.pcapSession.on('packet', this.segmentsReassembly.bind(this));
         this.pcapSession.on('error', this.handleError.bind(this));
         this.queryProcessor.start();
         this.logger.info('Started packet decoder');
     }
 
-    processPacketReassembleAlgo(rawPacket) {
+    fragmentsReassembly(rawPacket) {
         try {
             const packet = pcap.decode.packet(rawPacket);
             const ipv4Packet = packet.payload.payload;
@@ -72,7 +72,7 @@ class PacketDecoder {
         }
     }
 
-    processPacket(rawPacket) {
+    segmentsReassembly(rawPacket) {
         try {
             const packet = pcap.decode.packet(rawPacket);
             const ipv4Packet = packet.payload.payload;
