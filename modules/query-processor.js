@@ -42,17 +42,13 @@ class QueryProcessor extends EventEmitter {
                 response,
                 key,
             }, 'Corresponding request not able to get parsed');
+            delete this.queries[key];
         } else if (query) {
             const duration_in_ns = process.hrtime.bigint() - query['startTime'];
             query['duration_in_ns'] = duration_in_ns;
             query['size_in_bytes'] = Buffer.byteLength(value);
             this.metricsEmitter.emit('query', query);
             delete this.queries[key];
-        } else {
-            this.logger.error({
-                response,
-                key,
-            }, 'Corresponding request not found for response');
         }
 
     }

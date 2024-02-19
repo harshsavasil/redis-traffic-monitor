@@ -12,7 +12,7 @@ class RespParser {
         } catch (err) {
             this.logger.error({
                 err,
-                data: data && data.toString(),
+                // data: data && data.toString(),
             }, '[respParser] [parseData] Error in decoding the data');
             return null;
         }
